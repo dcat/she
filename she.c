@@ -29,6 +29,7 @@ typedef struct {
 	off_t csr;
 	int mode;
 	char *orig;
+	int insert;
 } he_t;
 
 static he_t he;
@@ -109,7 +110,8 @@ redraw(void) {
 	}
 
 	/* status bar */
-	tb_printf(0, tb_height() - 1, FG, BG, "%s ^C quit, ^X save",
+	tb_printf(0, tb_height() - 1, FG, BG, "%s%s ^C quit, ^X save",
+			he.insert ? "INSERT " : "",
 			he.mode == ASCII ? "ascii" : "hex");
 	tb_present();
 }
@@ -160,7 +162,7 @@ scroll(uint16_t key) {
 int
 main(int argc, char **argv) {
 	struct tb_event ev;
-	int i, has_err;
+	int i, has_err, change;
 
 	setlocale(LC_ALL, "");
 	tb_init();
@@ -202,7 +204,23 @@ main(int argc, char **argv) {
 				he.mode = he.mode == ASCII ? HEX : ASCII;
 				break;
 			case TB_KEY_CTRL_C:
-				goto end;
+				for (i = 0; i < he.siz; i++) {
+					if (he.map[i] != he.orig[i]) {
+						change = 1;
+						break;
+					}
+				}
+
+				if (change) {
+					tb_printf(0, tb_height() - 1, FG, BG,
+						"you have unsaved changes, press ^C again to quit");
+					tb_present();
+					if (tb_poll_event(&ev) != TB_EVENT_KEY)
+						break;
+					if (ev.key == TB_KEY_CTRL_C)
+						goto end;
+				} else
+					goto end;
 				/* NOTREACHED */
 			case TB_KEY_CTRL_L:
 				redraw();
@@ -235,19 +253,11 @@ main(int argc, char **argv) {
 			case TB_KEY_ARROW_LEFT:
 				scroll(ev.key);
 				break;
+			case TB_KEY_ESC:
+				he.insert = 0;
+				break;
 			default:
 				if (he.mode == HEX) {
-					switch (ev.ch) {
-					case 'g':
-						if (tb_poll_event(&ev) != TB_EVENT_KEY)
-							break;
-
-						if (ev.ch == 'g')
-							scroll(TB_KEY_HOME);
-						break;
-					case 'G':
-						scroll(TB_KEY_END);
-						break;
 					case 'a': case 'A':
 					case 'b': case 'B':
 					case 'c': case 'C':
@@ -266,6 +276,10 @@ main(int argc, char **argv) {
 					case '9': {
 						unsigned char s1, s2;
 						char p[3] = { 0, 0, 0 };
+
+						if (!he.insert)
+							break;
+
 						s1 = ev.ch;
 						tb_printf(13 + (he.csr % 16) * 3,
 							(he.csr - he.off) / 16,
@@ -281,13 +295,26 @@ main(int argc, char **argv) {
 							strtoul(p, NULL, 16);
 						/* FALLTHROUGH */
 					}
-					default:
-						redraw();
-						break;
-					}
 				} else if (he.mode == ASCII) {
-					he.map[he.csr] = ev.ch;
+					if (he.insert)
+						he.map[he.csr] = ev.ch;
 				}
+				switch (ev.ch) {
+				case 'g':
+					if (tb_poll_event(&ev) != TB_EVENT_KEY)
+						break;
+
+					if (ev.ch == 'g')
+						scroll(TB_KEY_HOME);
+					break;
+				case 'G':
+					scroll(TB_KEY_END);
+					break;
+				case 'i':
+					he.insert = 1;
+					break;
+				}
+
 			}
 		case TB_EVENT_RESIZE:
 			redraw();
