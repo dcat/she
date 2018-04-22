@@ -11,7 +11,6 @@
 #include <ctype.h>
 #include <err.h>
 
-#define PATH  argv[1]
 #define FG TB_DEFAULT
 #define BG TB_DEFAULT
 #define PGSIZ 16
@@ -98,7 +97,7 @@ redraw(void) {
 }
 
 void
-cursor(uint16_t key) {
+scroll(uint16_t key) {
 	switch (key) {
 	case TB_KEY_ARROW_UP:
 		if (he.csr >= 16) {
@@ -140,7 +139,7 @@ main(int argc, char **argv) {
 	tb_select_output_mode(TB_OUTPUT_256);
 
 	/* check args */
-	he.d = open(PATH, O_RDWR);
+	he.d = open(argv[1], O_RDWR);
 	if (he.d < 0) {
 		warn("open");
 		goto done;
@@ -170,23 +169,40 @@ main(int argc, char **argv) {
 			case TB_KEY_CTRL_C:
 				goto done;
 				/* NOTREACHED */
+			case TB_KEY_CTRL_D:
 			case TB_KEY_PGDN:
 				for (i = 0; i < PGSIZ; i++)
-					cursor(TB_KEY_ARROW_DOWN);
+					scroll(TB_KEY_ARROW_DOWN);
 				break;
+			case TB_KEY_CTRL_U:
 			case TB_KEY_PGUP:
 				for (i = 0; i < PGSIZ; i++)
-					cursor(TB_KEY_ARROW_UP);
+					scroll(TB_KEY_ARROW_UP);
+				break;
+			case TB_KEY_HOME:
+				he.csr = he.off = 0;
+				break;
+			case TB_KEY_END:
+				he.csr = he.off = he.siz - 1;
 				break;
 			case TB_KEY_CTRL_L:
 			case TB_KEY_ARROW_UP:
 			case TB_KEY_ARROW_DOWN:
 			case TB_KEY_ARROW_RIGHT:
 			case TB_KEY_ARROW_LEFT:
-				cursor(ev.key);
+				scroll(ev.key);
 				break;
 			default:
 				switch (ev.ch) {
+				case 'g':
+					if (tb_poll_event(&ev) != TB_EVENT_KEY)
+						break;
+					if (ev.ch == 'g')
+						he.csr = he.off = 0;
+					break;
+				case 'G':
+					he.csr = he.off = he.siz - 1;
+					break;
 				case 'a': case 'A':
 				case 'b': case 'B':
 				case 'c': case 'C':
