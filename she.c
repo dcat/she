@@ -77,16 +77,18 @@ redraw(void) {
 					i > he.siz ? 0 :
 					(unsigned char)he.map[i]);
 
+				/* ascii */
 				tb_printf(64 + i % 16, y, i >= he.siz ? 239
 					: FG, BG, "%c", isprint(he.map[i])
 					? he.map[i] : '.');
 
+				/* focused */
 				if (he.csr == i) {
 					tb_printf(13 + (x * 12) + (z * 3), y,
 						16, 255, "%02x",
 						(unsigned char)he.map[i]);
 					tb_printf(64 + i % 16, y, 16, 255, "%c",
- 						isprint(he.map[i]) ? he.map[i]
+						isprint(he.map[i]) ? he.map[i]
 						: '.');
 				}
 			}
@@ -99,13 +101,15 @@ redraw(void) {
 
 void
 scroll(uint16_t key) {
+	int i;
+
 	switch (key) {
 	case TB_KEY_ARROW_UP:
 		if (he.csr >= 16) {
 			if ((he.csr - he.off) / 16 == 0)
 				he.off -= 16;
 
-			he.csr -= 1 * 16;
+			he.csr -= 16;
 		}
 		break;
 	case TB_KEY_ARROW_DOWN:
@@ -127,6 +131,14 @@ scroll(uint16_t key) {
 		if (he.csr > 0)
 			he.csr -= 1;
 		break;
+	case TB_KEY_END:
+		for (i = 0; i < he.siz - 1 / 16; i++)
+			scroll(TB_KEY_ARROW_DOWN);
+		break;
+	case TB_KEY_HOME:
+		he.off = 0;
+		he.csr = he.csr % 16;
+		break;
 	}
 }
 
@@ -142,20 +154,20 @@ main(int argc, char **argv) {
 	/* check args */
 	he.d = open(argv[1], O_RDWR);
 	if (he.d < 0)
-		goto done;
+		goto end;
 
 	he.siz = lseek(he.d, 0, SEEK_END);
 	if (he.siz < 0)
-		goto done;
+		goto end;
 
 	if (he.siz < 1) {
 		errno = EIO;
-		goto done;
+		goto end;
 	}
 
 	he.map = mmap(0, he.siz, PROT_READ | PROT_WRITE, MAP_SHARED, he.d, 0);
 	if (he.map == MAP_FAILED)
-		goto done;
+		goto end;
 
 	he.off = 0;
 	he.csr = 0;
@@ -166,8 +178,11 @@ main(int argc, char **argv) {
 		case TB_EVENT_KEY:
 			switch (ev.key) {
 			case TB_KEY_CTRL_C:
-				goto done;
+				goto end;
 				/* NOTREACHED */
+			case TB_KEY_CTRL_L:
+				redraw();
+				break;
 			case TB_KEY_CTRL_D:
 			case TB_KEY_PGDN:
 				for (i = 0; i < PGSIZ; i++)
@@ -179,12 +194,12 @@ main(int argc, char **argv) {
 					scroll(TB_KEY_ARROW_UP);
 				break;
 			case TB_KEY_HOME:
-				he.csr = he.off = 0;
+				scroll(ev.key);
 				break;
 			case TB_KEY_END:
-				he.csr = he.off = he.siz - 1;
+				for (i = 0; i < he.siz - 1 / 16; i++)
+					scroll(TB_KEY_ARROW_DOWN);
 				break;
-			case TB_KEY_CTRL_L:
 			case TB_KEY_ARROW_UP:
 			case TB_KEY_ARROW_DOWN:
 			case TB_KEY_ARROW_RIGHT:
@@ -196,11 +211,12 @@ main(int argc, char **argv) {
 				case 'g':
 					if (tb_poll_event(&ev) != TB_EVENT_KEY)
 						break;
+
 					if (ev.ch == 'g')
-						he.csr = he.off = 0;
+						scroll(TB_KEY_HOME);
 					break;
 				case 'G':
-					he.csr = he.off = he.siz - 1;
+					scroll(TB_KEY_END);
 					break;
 				case 'a': case 'A':
 				case 'b': case 'B':
@@ -231,9 +247,10 @@ main(int argc, char **argv) {
 					s2 = ev.ch;
 					p[0] = s1;
 					p[1] = s2;
-					he.map[he.csr] =
-						(unsigned char)strtoul(p, NULL, 16);
-					msync(he.map, he.siz, MS_ASYNC);
+					he.map[he.csr] = (unsigned char)
+						strtoul(p, NULL, 16);
+					if (msync(he.map, he.siz, MS_ASYNC) < 0)
+						goto end;
 					/* FALLTHROUGH */
 				}
 				default:
@@ -246,7 +263,7 @@ main(int argc, char **argv) {
 		}
 	}
 
-done:
+end:
 	tb_shutdown();
 	if (errno)
 		warn("error");
