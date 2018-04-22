@@ -258,6 +258,7 @@ main(int argc, char **argv) {
 				break;
 			default:
 				if (he.mode == HEX) {
+					switch(ev.ch) {
 					case 'a': case 'A':
 					case 'b': case 'B':
 					case 'c': case 'C':
@@ -295,10 +296,12 @@ main(int argc, char **argv) {
 							strtoul(p, NULL, 16);
 						/* FALLTHROUGH */
 					}
+					}
 				} else if (he.mode == ASCII) {
 					if (he.insert)
 						he.map[he.csr] = ev.ch;
 				}
+
 				switch (ev.ch) {
 				case 'g':
 					if (tb_poll_event(&ev) != TB_EVENT_KEY)
