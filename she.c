@@ -95,6 +95,7 @@ redraw(void) {
 		}
 	}
 
+	tb_printf(0, tb_height() - 1, FG, BG, "^C quit, ^X save");
 
 	tb_present();
 }
@@ -165,12 +166,11 @@ main(int argc, char **argv) {
 		goto end;
 	}
 
-	he.map = mmap(0, he.siz, PROT_READ | PROT_WRITE, MAP_SHARED, he.d, 0);
+	he.map = mmap(0, he.siz, PROT_READ | PROT_WRITE, MAP_PRIVATE, he.d, 0);
 	if (he.map == MAP_FAILED)
 		goto end;
 
-	he.off = 0;
-	he.csr = 0;
+	he.off = he.csr = 0;
 	redraw();
 
 	while (tb_poll_event(&ev) > 0) {
@@ -182,6 +182,10 @@ main(int argc, char **argv) {
 				/* NOTREACHED */
 			case TB_KEY_CTRL_L:
 				redraw();
+				break;
+			case TB_KEY_CTRL_X:
+				lseek(he.d, 0, 0);
+				write(he.d, he.map, he.siz);
 				break;
 			case TB_KEY_CTRL_D:
 			case TB_KEY_PGDN:
@@ -273,5 +277,4 @@ end:
 
 	return 0;
 }
-
 
