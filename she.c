@@ -35,33 +35,16 @@ typedef struct {
 
 static he_t he;
 
-void *
-memmem(const void *l, size_t l_len, const void *s, size_t s_len)
+size_t
+search(const void *l, size_t l_len, const void *s, size_t s_len)
 {
-	const char *cur, *last;
-	const char *cl = l;
-	const char *cs = s;
+	size_t i;
 
-	/* a zero length needle should just return the haystack */
-	if (s_len == 0)
-		return (void *)cl;
+	for (i = 0; i < l_len - s_len; i++)
+		if (memcmp(l + i, s, s_len) == 0)
+			return i;
 
-	/* "s" must be smaller or equal to "l" */
-	if (l_len < s_len)
-		return NULL;
-
-	/* special case where s_len == 1 */
-	if (s_len == 1)
-		return memchr(l, *cs, l_len);
-
-	/* the last position where its possible to find "s" in "l" */
-	last = cl + l_len - s_len;
-
-	for (cur = cl; cur <= last; cur++)
-		if (cur[0] == cs[0] && memcmp(cur, cs, s_len) == 0)
-			return (void *)cur;
-
-	return NULL;
+	return 0;
 }
 
 void
@@ -355,7 +338,7 @@ main(int argc, char **argv) {
 				case '/': {
 					char needle[256];
 					char *p = needle;
-					char *base;
+					size_t base;
 
 					memset(needle, 0, 256);
 
@@ -368,13 +351,20 @@ main(int argc, char **argv) {
 						tb_present();
 					}
 
-					base = memmem(he.map, he.siz, needle,
-							p - needle);
-					if (base == NULL) {
+					base = search(he.map, he.siz, needle,
+							(p - needle) - 1);
+					if (base == 0) {
 						tb_printf(0, tb_height() - 1,
 							16, 196, "not found");
 						tb_present();
 						he.status = 1;
+					} else {
+						scroll(TB_KEY_HOME);
+						he.off = base / 16;
+						for (i = 0; i < he.off; i++)
+							scroll(TB_KEY_ARROW_DOWN);
+						he.csr = base;
+						redraw();
 					}
 				} break;
 				}
