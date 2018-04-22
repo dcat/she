@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 #include <err.h>
 
 #define FG TB_DEFAULT
@@ -140,23 +141,21 @@ main(int argc, char **argv) {
 
 	/* check args */
 	he.d = open(argv[1], O_RDWR);
-	if (he.d < 0) {
-		warn("open");
+	if (he.d < 0)
 		goto done;
-	}
 
 	he.siz = lseek(he.d, 0, SEEK_END);
 	if (he.siz < 0)
-		err(1, "lseek");
+		goto done;
 
 	if (he.siz < 1) {
-		warn("no content");
+		errno = EIO;
 		goto done;
 	}
 
 	he.map = mmap(0, he.siz, PROT_READ | PROT_WRITE, MAP_SHARED, he.d, 0);
 	if (he.map == MAP_FAILED)
-		err(1, "mmap");
+		goto done;
 
 	he.off = 0;
 	he.csr = 0;
@@ -248,9 +247,12 @@ main(int argc, char **argv) {
 	}
 
 done:
+	tb_shutdown();
+	if (errno)
+		warn("error");
+
 	munmap(he.map, he.siz);
 	close(he.d);
-	tb_shutdown();
 
 	return 0;
 }
