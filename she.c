@@ -30,9 +30,39 @@ typedef struct {
 	int mode;
 	char *orig;
 	int insert;
+	int status;
 } he_t;
 
 static he_t he;
+
+void *
+memmem(const void *l, size_t l_len, const void *s, size_t s_len)
+{
+	const char *cur, *last;
+	const char *cl = l;
+	const char *cs = s;
+
+	/* a zero length needle should just return the haystack */
+	if (s_len == 0)
+		return (void *)cl;
+
+	/* "s" must be smaller or equal to "l" */
+	if (l_len < s_len)
+		return NULL;
+
+	/* special case where s_len == 1 */
+	if (s_len == 1)
+		return memchr(l, *cs, l_len);
+
+	/* the last position where its possible to find "s" in "l" */
+	last = cl + l_len - s_len;
+
+	for (cur = cl; cur <= last; cur++)
+		if (cur[0] == cs[0] && memcmp(cur, cs, s_len) == 0)
+			return (void *)cur;
+
+	return NULL;
+}
 
 void
 tb_print(char *str, int x, int y, int fg, int bg, int len) {
@@ -110,10 +140,13 @@ redraw(void) {
 	}
 
 	/* status bar */
-	tb_printf(0, tb_height() - 1, FG, BG, "%s%s ^C quit, ^X save",
-			he.insert ? "INSERT " : "",
-			he.mode == ASCII ? "ascii" : "hex");
-	tb_present();
+	if (!he.status) {
+		tb_printf(0, tb_height() - 1, FG, BG, "%s%s ^C quit, ^X save",
+				he.insert ? "INSERT " : "",
+				he.mode == ASCII ? "ascii" : "hex");
+		tb_present();
+	}
+	he.status = 0;
 }
 
 void
@@ -319,6 +352,31 @@ main(int argc, char **argv) {
 				case 'i':
 					he.insert = 1;
 					break;
+				case '/': {
+					char needle[256];
+					char *p = needle;
+					char *base;
+
+					memset(needle, 0, 256);
+
+					while (ev.key != TB_KEY_ENTER) {
+						tb_poll_event(&ev);
+						*p++ = ev.ch;
+						tb_printf(0, tb_height() - 1,
+							FG, BG, "/%-*s",
+							tb_width(), needle);
+						tb_present();
+					}
+
+					base = memmem(he.map, he.siz, needle,
+							p - needle);
+					if (base == NULL) {
+						tb_printf(0, tb_height() - 1,
+							16, 196, "not found");
+						tb_present();
+						he.status = 1;
+					}
+				} break;
 				}
 
 			}
