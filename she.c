@@ -95,8 +95,8 @@ redraw(void) {
 		}
 	}
 
+	/* status bar */
 	tb_printf(0, tb_height() - 1, FG, BG, "^C quit, ^X save");
-
 	tb_present();
 }
 
@@ -146,7 +146,7 @@ scroll(uint16_t key) {
 int
 main(int argc, char **argv) {
 	struct tb_event ev;
-	int i;
+	int i, has_err;
 
 	setlocale(LC_ALL, "");
 	tb_init();
@@ -155,20 +155,20 @@ main(int argc, char **argv) {
 	/* check args */
 	he.d = open(argv[1], O_RDWR);
 	if (he.d < 0)
-		goto end;
+		goto error;
 
 	he.siz = lseek(he.d, 0, SEEK_END);
 	if (he.siz < 0)
-		goto end;
+		goto error;
 
 	if (he.siz < 1) {
 		errno = EIO;
-		goto end;
+		goto error;
 	}
 
 	he.map = mmap(0, he.siz, PROT_READ | PROT_WRITE, MAP_PRIVATE, he.d, 0);
 	if (he.map == MAP_FAILED)
-		goto end;
+		goto error;
 
 	he.off = he.csr = 0;
 	redraw();
@@ -253,8 +253,6 @@ main(int argc, char **argv) {
 					p[1] = s2;
 					he.map[he.csr] = (unsigned char)
 						strtoul(p, NULL, 16);
-					if (msync(he.map, he.siz, MS_ASYNC) < 0)
-						goto end;
 					/* FALLTHROUGH */
 				}
 				default:
@@ -267,13 +265,15 @@ main(int argc, char **argv) {
 		}
 	}
 
+error:
+	has_err = 1;
 end:
 	tb_shutdown();
-	if (errno)
-		warn("error");
-
 	munmap(he.map, he.siz);
 	close(he.d);
+
+	if (has_err && errno)
+		warn("error");
 
 	return 0;
 }
