@@ -294,12 +294,15 @@ main(int argc, char **argv) {
 						p[1] = s2;
 						he.map[he.csr] = (unsigned char)
 							strtoul(p, NULL, 16);
+						scroll(TB_KEY_ARROW_RIGHT);
 						/* FALLTHROUGH */
-					}
+					} break;
 					}
 				} else if (he.mode == ASCII) {
-					if (he.insert)
+					if (he.insert) {
 						he.map[he.csr] = ev.ch;
+						scroll(TB_KEY_ARROW_RIGHT);
+					}
 				}
 
 				switch (ev.ch) {
