@@ -22,6 +22,11 @@ enum {
 };
 
 typedef struct {
+	int id;
+	char str[BUFSIZ];
+} table_t;
+
+typedef struct {
 	char *map;
 	int d;
 	off_t siz;
@@ -36,11 +41,29 @@ typedef struct {
 
 static he_t he;
 
+enum {
+	COMMAND_NONE,
+	COMMAND_QUIT,
+	COMMAND_SAVE,
+	COMMAND_SAVEQUIT,
+	COMMAND_REDRAW,
+	COMMAND_HELP,
+};
+
+table_t commands[] = {
+	{ COMMAND_NONE,         ""       },
+	{ COMMAND_QUIT,         "q"      },
+	{ COMMAND_SAVE,         "w"      },
+	{ COMMAND_SAVEQUIT,     "wq"     },
+	{ COMMAND_REDRAW,       "redraw" },
+	{ COMMAND_HELP,         "help"   },
+};
+
 int
 is_modified() {
 	int change, i;
 
-	for (i = 0; i < he.siz; i++) {
+	for (change = i = 0; i < he.siz; i++) {
 		if (he.map[i] != he.orig[i]) {
 			change = 1;
 			break;
@@ -49,6 +72,13 @@ is_modified() {
 
 	return change;
 
+}
+
+void
+save() {
+	lseek(he.d, 0, 0);
+	write(he.d, he.map, he.siz);
+	memcpy(he.orig, he.map, he.siz);
 }
 
 void
@@ -221,35 +251,53 @@ scroll(uint16_t key) {
 	}
 }
 
+int
+lookup_cmd(char *cmd) {
+	int i;
+
+	for (i = 0; i < sizeof(commands)/sizeof(*commands); i++)
+		if (!strcmp(cmd, commands[i].str))
+			return commands[i].id;
+
+	return COMMAND_NONE;
+}
+
 void
 runcmd(char *cmd) {
 	struct tb_event ev;
 	ssize_t offset;
 	int i;
 
-	switch (cmd[0]) {
-	case 'q':
-		if (cmd[1] == 0) {
-			if (is_modified()) {
-				tb_printf(0, tb_height() - 1, FG, BG,
-					"you have unsaved changes, press ^C again to quit");
-				tb_present();
-				if (tb_poll_event(&ev) != TB_EVENT_KEY)
-					break;
-				if (ev.key == TB_KEY_CTRL_C)
-					cleanup();
-			} else
+	switch (lookup_cmd(cmd)) {
+	case COMMAND_REDRAW:
+		redraw();
+		break;
+	case COMMAND_SAVE:
+		save();
+		break;
+	case COMMAND_SAVEQUIT:
+		save();
+	case COMMAND_QUIT:
+		if (is_modified()) {
+			tb_printf(0, tb_height() - 1, FG, BG,
+				"you have unsaved changes, press ^C to quit without saving");
+			tb_present();
+			if (tb_poll_event(&ev) != TB_EVENT_KEY)
+				break;
+			if (ev.key == TB_KEY_CTRL_C)
 				cleanup();
-			break;
+		} else
+			cleanup();
+		break;
+	default:
+		if (isxdigits(cmd)) {
+			offset = strtoul(cmd, NULL, 16);
+
+			scroll(TB_KEY_HOME);
+			for (i = 0; i < offset / 16; i++)
+				scroll(TB_KEY_ARROW_DOWN);
 		}
-	}
-
-	if (isxdigits(cmd)) {
-		offset = strtoul(cmd, NULL, 16);
-
-		scroll(TB_KEY_HOME);
-		for (i = 0; i < offset / 16; i++)
-			scroll(TB_KEY_ARROW_DOWN);
+		break;
 	}
 
 	return;
@@ -318,9 +366,7 @@ main(int argc, char **argv) {
 				redraw();
 				break;
 			case TB_KEY_CTRL_X:
-				lseek(he.d, 0, 0);
-				write(he.d, he.map, he.siz);
-				memcpy(he.orig, he.map, he.siz);
+				save();
 				break;
 			case TB_KEY_CTRL_D:
 			case TB_KEY_PGDN:
