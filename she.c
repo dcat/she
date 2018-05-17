@@ -463,6 +463,7 @@ main(int argc, char **argv) {
 						tb_present();
 						he.status = 1;
 					} else {
+						base += he.csr + 1;
 						scroll(TB_KEY_HOME);
 						he.off = base / 16;
 						for (i = 0; i < he.off; i++)
