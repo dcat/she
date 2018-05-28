@@ -341,8 +341,8 @@ main(int argc, char **argv) {
 	he.mode = HEX;
 	redraw();
 
-					char *p = needle;
-					size_t base;
+	char *p = needle;
+	size_t base;
 	while (tb_poll_event(&ev) > 0) {
 		switch (ev.type) {
 		case TB_EVENT_KEY:
@@ -521,17 +521,63 @@ main(int argc, char **argv) {
 				case '/': {
 					memset(needle, 0, 256);
 
-					while (ev.key != TB_KEY_ENTER) {
-						tb_poll_event(&ev);
-						*p++ = ev.ch;
-						tb_printf(0, tb_height() - 1,
-							FG, BG, "/%-*s",
-							tb_width(), needle);
-						tb_present();
+					if (he.mode == ASCII) {
+						while (ev.key != TB_KEY_ENTER) {
+							tb_poll_event(&ev);
+							*p++ = ev.ch;
+							tb_printf(0, tb_height() - 1,
+								FG, BG, "/%-*s",
+								tb_width(), needle);
+							tb_present();
+						}
+					} else if (he.mode == HEX) {
+						char q[3] = { 0, 0, 0 };
+						char *q2 = q;
+						char input[256];
+						memset(input, 0, 256);
+						char *i = input;
+
+						while (ev.key != TB_KEY_ENTER) {
+							tb_poll_event(&ev);
+
+							switch(ev.ch) {
+							case 'a': case 'A':
+							case 'b': case 'B':
+							case 'c': case 'C':
+							case 'd': case 'D':
+							case 'e': case 'E':
+							case 'f': case 'F':
+							case '0':
+							case '1':
+							case '2':
+							case '3':
+							case '4':
+							case '5':
+							case '6':
+							case '7':
+							case '8':
+							case '9': {
+								*q2++ = ev.ch;
+								if ((q2 - q) >= 2)
+								{
+									*p++ = strtoul(q, NULL, 16);
+									q2 = q;
+								}
+
+								*i++ = ev.ch;
+								tb_printf(0, tb_height() - 1,
+									FG, BG, "/%-*s",
+									tb_width(), input);
+								tb_present();
+								/* FALLTHROUGH */
+							} break;
+							}
+						}
+						*p++ = 0;
 					}
 
 					base = search(he.map, he.siz, needle,
-							(p - needle) - 1);
+						(p - needle) - 1);
 					if (base == 0) {
 						tb_printf(0, tb_height() - 1,
 							16, 196, "not found");
