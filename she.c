@@ -448,6 +448,7 @@ main(int argc, char **argv) {
 					/* command */
 					char cmdbuf[BUFSIZ];
 					char *p = cmdbuf;
+					int b = 0;
 
 					memset(p, 0, BUFSIZ);
 					tb_printf(0, tb_height() - 1,
@@ -460,15 +461,21 @@ main(int argc, char **argv) {
 
 					while (ev.key != TB_KEY_ESC) {
 						tb_poll_event(&ev);
-						*p++ = ev.ch;
-
-						/* handle backspace? */
-
-						if (ev.key == TB_KEY_ENTER) {
+						switch(ev.key) {
+						case TB_KEY_BACKSPACE:
+						case TB_KEY_BACKSPACE2:
+							*(--p) = 0;
+							break;
+						case TB_KEY_ENTER:
 							/* run command */
 							runcmd(cmdbuf);
+							b = 1;
 							break;
+						default:
+							*p++ = ev.ch;
 						}
+						if (b > 0)
+							break;
 
 						tb_printf(0, tb_height() - 1,
 							16, 255, ":%-*s",
