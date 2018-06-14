@@ -395,52 +395,50 @@ main(int argc, char **argv) {
 				he.insert = 0;
 				break;
 			default:
-				if (he.mode == HEX) {
-					switch(ev.ch) {
-					case 'a': case 'A':
-					case 'b': case 'B':
-					case 'c': case 'C':
-					case 'd': case 'D':
-					case 'e': case 'E':
-					case 'f': case 'F':
-					case '0':
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9': {
-						unsigned char s1, s2;
-						char p[3] = { 0, 0, 0 };
+				if (he.insert) {
+					if (he.mode == HEX) {
+						switch(ev.ch) {
+						case 'a': case 'A':
+						case 'b': case 'B':
+						case 'c': case 'C':
+						case 'd': case 'D':
+						case 'e': case 'E':
+						case 'f': case 'F':
+						case '0':
+						case '1':
+						case '2':
+						case '3':
+						case '4':
+						case '5':
+						case '6':
+						case '7':
+						case '8':
+						case '9': {
+							unsigned char s1, s2;
+							char p[3] = { 0, 0, 0 };
 
-						if (!he.insert)
-							break;
+							s1 = ev.ch;
+							tb_printf(13 + (he.csr % 16) * 3,
+								(he.csr - he.off) / 16,
+								16, 255, "%c_", ev.ch);
+							tb_present();
+							if (tb_poll_event(&ev) != TB_EVENT_KEY)
+								break;
 
-						s1 = ev.ch;
-						tb_printf(13 + (he.csr % 16) * 3,
-							(he.csr - he.off) / 16,
-							16, 255, "%c_", ev.ch);
-						tb_present();
-						if (tb_poll_event(&ev) != TB_EVENT_KEY)
-							break;
-
-						s2 = ev.ch;
-						p[0] = s1;
-						p[1] = s2;
-						he.map[he.csr] = (unsigned char)
-							strtoul(p, NULL, 16);
-						scroll(TB_KEY_ARROW_RIGHT);
-						/* FALLTHROUGH */
-					} break;
-					}
-				} else if (he.mode == ASCII) {
-					if (he.insert) {
+							s2 = ev.ch;
+							p[0] = s1;
+							p[1] = s2;
+							he.map[he.csr] = (unsigned char)
+								strtoul(p, NULL, 16);
+							scroll(TB_KEY_ARROW_RIGHT);
+							/* FALLTHROUGH */
+						} break;
+						}
+					} else if (he.mode == ASCII) {
 						he.map[he.csr] = ev.ch;
 						scroll(TB_KEY_ARROW_RIGHT);
 					}
+					break;
 				}
 
 				switch (ev.ch) {
