@@ -527,59 +527,48 @@ main(int argc, char **argv) {
 					break;
 				case '/': {
 					memset(needle, 0, 256);
+					p = needle;
 
-					if (he.mode == ASCII) {
-						while (ev.key != TB_KEY_ENTER) {
-							tb_poll_event(&ev);
+					while (ev.key != TB_KEY_ENTER) {
+						tb_poll_event(&ev);
+
+						switch(ev.key) {
+						case TB_KEY_BACKSPACE:
+						case TB_KEY_BACKSPACE2:
+							*(--p) = 0;
+							break;
+						default:
+							if ((he.mode == HEX) && (!isxdigit(ev.ch)))
+								continue;
 							*p++ = ev.ch;
-							tb_printf(0, tb_height() - 1,
-								FG, BG, "/%-*s",
-								tb_width(), needle);
-							tb_present();
 						}
-					} else if (he.mode == HEX) {
+						tb_printf(0, tb_height() - 1,
+							FG, BG, "/%-*s",
+							tb_width(), needle);
+						tb_present();
+					}
+
+					if (he.mode == HEX) {
+						unsigned int len = p - needle;
+						char buf[256];
 						char q[3] = { 0, 0, 0 };
-						char *q2 = q;
-						char input[256];
-						memset(input, 0, 256);
-						char *i = input;
+						char *b = buf;
+						memcpy(buf, needle, 256);
+						memset(needle, 0, 256);
+						p = needle;
 
-						while (ev.key != TB_KEY_ENTER) {
-							tb_poll_event(&ev);
-
-							switch(ev.ch) {
-							case 'a': case 'A':
-							case 'b': case 'B':
-							case 'c': case 'C':
-							case 'd': case 'D':
-							case 'e': case 'E':
-							case 'f': case 'F':
-							case '0':
-							case '1':
-							case '2':
-							case '3':
-							case '4':
-							case '5':
-							case '6':
-							case '7':
-							case '8':
-							case '9': {
-								*q2++ = ev.ch;
-								if ((q2 - q) >= 2)
-								{
-									*p++ = strtoul(q, NULL, 16);
-									q2 = q;
-								}
-
-								*i++ = ev.ch;
-								tb_printf(0, tb_height() - 1,
-									FG, BG, "/%-*s",
-									tb_width(), input);
-								tb_present();
-								/* FALLTHROUGH */
-							} break;
-							}
+						if ((len % 2) != 0) {
+							q[0] = '0';
+							q[1] = *b++;
+							*p++ = strtoul(q, NULL, 16);
 						}
+
+						while ((b - buf) < len) {
+							q[0] = *b++;
+							q[1] = *b++;
+							*p++ = strtoul(q, NULL, 16);
+						}
+
 						*p++ = 0;
 					}
 
