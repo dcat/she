@@ -46,6 +46,7 @@ enum {
 	COMMAND_QUIT,
 	COMMAND_SAVE,
 	COMMAND_SAVEQUIT,
+	COMMAND_FORCEQUIT,
 	COMMAND_REDRAW,
 	COMMAND_HELP,
 };
@@ -55,6 +56,7 @@ table_t commands[] = {
 	{ COMMAND_QUIT,         "q"      },
 	{ COMMAND_SAVE,         "w"      },
 	{ COMMAND_SAVEQUIT,     "wq"     },
+	{ COMMAND_FORCEQUIT,    "q!"     },
 	{ COMMAND_REDRAW,       "redraw" },
 	{ COMMAND_HELP,         "help"   },
 };
@@ -288,6 +290,9 @@ runcmd(char *cmd) {
 				cleanup();
 		} else
 			cleanup();
+		break;
+	case COMMAND_FORCEQUIT:
+		cleanup();
 		break;
 	default:
 		if (isxdigits(cmd)) {
