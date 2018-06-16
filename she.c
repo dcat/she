@@ -524,6 +524,7 @@ main(int argc, char **argv) {
 						he.off = base / 16;
 						for (i = 0; i < he.off; i++)
 							scroll(TB_KEY_ARROW_DOWN);
+						he.off = (base / 16) * 16;
 						he.csr = base;
 						redraw();
 					}
@@ -587,6 +588,7 @@ main(int argc, char **argv) {
 						he.off = base / 16;
 						for (i = 0; i < he.off; i++)
 							scroll(TB_KEY_ARROW_DOWN);
+						he.off = (base / 16) * 16;
 						he.csr = base;
 						redraw();
 					}
