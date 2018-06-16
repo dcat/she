@@ -245,10 +245,12 @@ scroll(uint16_t key) {
 	case TB_KEY_END:
 		for (i = 0; i < he.siz - 1 / 16; i++)
 			scroll(TB_KEY_ARROW_DOWN);
+		for (i = 0; i < he.siz - 1 % 16; i++)
+			scroll(TB_KEY_ARROW_RIGHT);
 		break;
 	case TB_KEY_HOME:
 		he.off = 0;
-		he.csr = he.csr % 16;
+		he.csr = 0;
 		break;
 	}
 }
@@ -301,6 +303,8 @@ runcmd(char *cmd) {
 			scroll(TB_KEY_HOME);
 			for (i = 0; i < offset / 16; i++)
 				scroll(TB_KEY_ARROW_DOWN);
+			for (i = 0; i < offset % 16; i++)
+				scroll(TB_KEY_ARROW_RIGHT);
 		}
 		break;
 	}
